@@ -1,12 +1,12 @@
 {
-  "name": "api-buses",
+  "name": "bus-api",
   "version": "1.0.0",
-  "description": "API sencilla de rutas de buses para la app de viajes",
   "main": "server.js",
   "scripts": {
     "start": "node server.js"
   },
   "dependencies": {
-    "express": "^4.18.2"
+    "express": "^4.18.2",
+    "cors": "^2.8.5"
   }
 }
