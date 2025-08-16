@@ -1,26 +1,32 @@
-const express = require('express');
-const fs = require('fs');
+const express = require("express");
+const cors = require("cors");
+const fs = require("fs");
+const path = require("path");
+
 const app = express();
-const PORT = process.env.PORT || 3000;
+app.use(cors());
+app.use(express.json());
 
-// Leer las rutas desde el archivo JSON
-const routes = JSON.parse(fs.readFileSync('./assets/routes.json', 'utf8')).routes;
+// Ruta del archivo JSON (en carpeta assets)
+const routesFile = path.join(__dirname, "assets", "routes.json");
 
-// Endpoint para obtener todas las rutas
-app.get('/routes', (req, res) => {
-  res.json(routes);
+// Endpoint de prueba
+app.get("/", (req, res) => {
+  res.send("🚍 API de Rutas de Buses funcionando");
 });
 
-// Endpoint para buscar rutas por origen y destino
-app.get('/routes/search', (req, res) => {
-  const { origin, destination } = req.query;
-  const results = routes.filter(route =>
-    (!origin || route.origin.toLowerCase() === origin.toLowerCase()) &&
-    (!destination || route.destination.toLowerCase() === destination.toLowerCase())
-  );
-  res.json(results);
+// Endpoint que devuelve el JSON de rutas
+app.get("/routes", (req, res) => {
+  fs.readFile(routesFile, "utf8", (err, data) => {
+    if (err) {
+      return res.status(500).json({ error: "No se pudo leer el archivo" });
+    }
+    res.json(JSON.parse(data));
+  });
 });
 
-app.listen(PORT, () => {
-  console.log(`API de buses corriendo en el puerto ${PORT}`);
+// Puerto y host según Render
+const PORT = process.env.PORT || 10000;
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
 });
