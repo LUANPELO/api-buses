@@ -1,5 +1,5 @@
 {
-  "name": "bus-routes-api",
+  "name": "api-buses",
   "version": "1.0.0",
   "description": "API sencilla de rutas de buses para la app de viajes",
   "main": "server.js",
