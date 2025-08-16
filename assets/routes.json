@@ -3,7 +3,7 @@
     {
       "origin": "Bogotá",
       "destination": "Medellín",
-      "price": 185000,
+      "price": 12000,
       "currency": "COP",
       "duration_hours": 9,
       "schedules": ["06:00 am", "10:30 am", "03:00 pm", "08:45 pm"]
