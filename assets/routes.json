@@ -9,6 +9,14 @@
       "schedules": ["06:00 am", "10:30 am", "03:00 pm", "08:45 pm"]
     },
     {
+      "origin": "Barranquilla",
+      "destination": "Maicao",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "10:30 am", "03:00 pm", "08:45 pm"]
+    },
+    {
       "origin": "Bogotá",
       "destination": "Cali",
       "price": 210000,
