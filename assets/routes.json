@@ -14,7 +14,7 @@
       "price": 60000,
       "currency": "COP",
       "duration_hours": 6,
-      "schedules": ["06:00 am", "10:30 am", "03:00 pm", "08:45 pm"]
+      "schedules": ["06:00 am", "12:30 am"]
     },
     {
       "origin": "Bogotá",
