@@ -6,7 +6,9 @@
       "price": 30000,
       "currency": "COP",
       "duration_hours": 6,
-      "schedules": ["06:00 am", "10:30 am", "03:00 pm", "08:45 pm"]
+      "schedules": ["06:00 am", "10:30 am", "03:00 pm", "08:45 pm"],
+      "totalSeats": 42,
+      "availableSeats": 40
     },
     {
       "origin": "Barranquilla",
@@ -14,8 +16,8 @@
       "price": 60000,
       "currency": "COP",
       "duration_hours": 6,
-      "schedules": ["06:00 am", "12:30 am"]
-      "totalSeats": 42
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
       "availableSeats": 38
     },
     {
@@ -24,7 +26,9 @@
       "price": 210000,
       "currency": "COP",
       "duration_hours": 11,
-      "schedules": ["07:00 am", "12:00 pm", "06:30 pm"]
+      "schedules": ["07:00 am", "12:00 pm", "06:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 35
     },
     {
       "origin": "Medellín",
@@ -32,7 +36,9 @@
       "price": 260000,
       "currency": "COP",
       "duration_hours": 13,
-      "schedules": ["05:30 am", "01:15 pm", "09:00 pm"]
+      "schedules": ["05:30 am", "01:15 pm", "09:00 pm"],
+      "totalSeats": 42,
+      "availableSeats": 25
     }
   ]
 }
