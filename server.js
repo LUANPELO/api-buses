@@ -2,7 +2,11 @@ const express = require("express");
 const cors = require("cors");
 const fs = require("fs");
 const path = require("path");
+const mercadopago = require("mercadopago");
 const app = express();
+
+// Configurar MercadoPago
+mercadopago.configurations.setAccessToken(process.env.MP_ACCESS_TOKEN || 'TEST-2951436048534426-123009-f91237d83c6e49f20efb2ed1e44b5a95-1577636154');
 
 // Middlewares
 app.use(cors());
@@ -11,15 +15,24 @@ app.use(express.json());
 // Rutas de archivos
 const routesFile = path.join(__dirname, "assets", "routes.json");
 const ticketsFile = path.join(__dirname, "assets", "tickets.json");
+const paymentsFile = path.join(__dirname, "assets", "payments.json");
 
-// Crear archivo de tickets si no existe
+// Crear archivos si no existen
 if (!fs.existsSync(ticketsFile)) {
   fs.writeFileSync(ticketsFile, JSON.stringify([], null, 2));
+}
+
+if (!fs.existsSync(paymentsFile)) {
+  fs.writeFileSync(paymentsFile, JSON.stringify([], null, 2));
 }
 
 // Función helper para generar ID único
 const generateTicketId = () => {
   return 'TICKET_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
+};
+
+const generatePaymentId = () => {
+  return 'PAY_' + Date.now() + '_' + Math.random().toString(36).substr(2, 9);
 };
 
 // Endpoint de prueba
@@ -30,7 +43,9 @@ app.get("/", (req, res) => {
       "GET /": "Esta página",
       "GET /routes": "Obtener todas las rutas",
       "POST /tickets": "Crear nuevo ticket",
-      "GET /tickets": "Obtener todos los tickets"
+      "GET /tickets": "Obtener todos los tickets",
+      "POST /process-payment": "Procesar pago con MercadoPago",
+      "GET /payment-status/:payment_id": "Consultar estado de pago"
     },
     status: "✅ Servidor funcionando correctamente",
     timestamp: new Date().toISOString()
@@ -65,7 +80,7 @@ app.get("/routes", (req, res) => {
   });
 });
 
-// ⭐ ENDPOINT CORREGIDO PARA MÚLTIPLES PASAJEROS
+// ⭐ ENDPOINT ORIGINAL PARA CREAR RESERVAS (sin pago)
 app.post("/tickets", (req, res) => {
   try {
     console.log("📝 Nueva reserva recibida:", JSON.stringify(req.body, null, 2));
@@ -183,10 +198,10 @@ app.post("/tickets", (req, res) => {
       });
     }
 
-    // ✅ DATOS VALIDADOS - Crear el ticket
+    // ✅ DATOS VALIDADOS - Crear el ticket (ESTADO PENDIENTE DE PAGO)
     const newTicket = {
       id: generateTicketId(),
-      status: "CONFIRMED",
+      status: "PENDING_PAYMENT", // Cambio: ahora está pendiente de pago
       createdAt: new Date().toISOString(),
       passengers: passengers.map((passenger, index) => ({
         name: passenger.name.trim(),
@@ -252,7 +267,7 @@ app.post("/tickets", (req, res) => {
           });
         }
 
-        console.log("✅ Ticket guardado exitosamente:", newTicket.id);
+        console.log("✅ Reserva creada (pendiente de pago):", newTicket.id);
         console.log(`👥 Pasajeros: ${newTicket.totalPassengers}`);
         console.log(`💺 Asientos: ${newTicket.seats.join(', ')}`);
         console.log(`💰 Precio total: $${newTicket.totalPrice} COP`);
@@ -260,7 +275,7 @@ app.post("/tickets", (req, res) => {
         // ✅ RESPUESTA EXITOSA (formato que espera Flutter)
         res.status(200).json({
           success: true,
-          message: "Reserva creada exitosamente",
+          message: "Reserva creada exitosamente - Pendiente de pago",
           ticket: {
             id: newTicket.id,
             status: newTicket.status,
@@ -287,6 +302,258 @@ app.post("/tickets", (req, res) => {
     });
   }
 });
+
+// 🚀 NUEVO ENDPOINT PARA PROCESAR PAGOS CON MERCADOPAGO
+app.post("/process-payment", async (req, res) => {
+  try {
+    console.log("💳 Procesando pago:", JSON.stringify(req.body, null, 2));
+    
+    const { reservation, amount, payment_method, card_data, pse_data } = req.body;
+    
+    // Validar datos básicos
+    if (!reservation || !amount || !payment_method) {
+      return res.status(400).json({
+        success: false,
+        error: "Datos de pago incompletos",
+        required: ["reservation", "amount", "payment_method"]
+      });
+    }
+
+    // Simular procesamiento con MercadoPago
+    // En producción, aquí harías la llamada real a MercadoPago
+    let paymentResult;
+    
+    if (payment_method === 'card') {
+      // Simular pago con tarjeta
+      if (!card_data || !card_data.card_number || !card_data.cardholder_name || !card_data.expiry_date || !card_data.cvv) {
+        return res.status(400).json({
+          success: false,
+          error: "Datos de tarjeta incompletos"
+        });
+      }
+
+      // SIMULACIÓN - En producción usar MercadoPago SDK
+      paymentResult = await simulateCardPayment(card_data, amount);
+      
+    } else if (payment_method === 'pse') {
+      // Simular pago PSE
+      if (!pse_data || !pse_data.document_number || !pse_data.email || !pse_data.bank_id) {
+        return res.status(400).json({
+          success: false,
+          error: "Datos de PSE incompletos"
+        });
+      }
+
+      // SIMULACIÓN - En producción usar MercadoPago SDK
+      paymentResult = await simulatePSEPayment(pse_data, amount);
+    }
+
+    if (!paymentResult.success) {
+      return res.status(400).json({
+        success: false,
+        error: paymentResult.error || "Error procesando el pago"
+      });
+    }
+
+    // Crear registro de pago
+    const paymentRecord = {
+      id: generatePaymentId(),
+      mercadopago_id: paymentResult.payment_id,
+      reservation_id: reservation.reservation_id,
+      amount: amount,
+      method: payment_method,
+      status: paymentResult.status,
+      created_at: new Date().toISOString(),
+      processed_at: paymentResult.status === 'approved' ? new Date().toISOString() : null,
+      details: paymentResult.details || {},
+    };
+
+    // Guardar pago
+    const payments = await readJSONFile(paymentsFile);
+    payments.push(paymentRecord);
+    await writeJSONFile(paymentsFile, payments);
+
+    // Si el pago es exitoso, actualizar el ticket
+    if (paymentResult.status === 'approved') {
+      await updateTicketPaymentStatus(reservation.reservation_id, 'PAID', paymentRecord.id);
+      
+      // Obtener datos actualizados del ticket
+      const tickets = await readJSONFile(ticketsFile);
+      const updatedTicket = tickets.find(t => t.id === reservation.reservation_id);
+      
+      if (updatedTicket) {
+        // Respuesta exitosa
+        return res.status(200).json({
+          success: true,
+          message: "Pago procesado exitosamente",
+          payment: {
+            id: paymentRecord.id,
+            status: paymentRecord.status,
+            method: payment_method === 'card' ? 'Tarjeta de Crédito/Débito' : 'PSE',
+            amount: amount,
+            processed_at: paymentRecord.processed_at
+          },
+          ticket: {
+            id: updatedTicket.id,
+            status: updatedTicket.status,
+            passengers: updatedTicket.totalPassengers,
+            mainPassenger: `${updatedTicket.passengers[0].name} ${updatedTicket.passengers[0].lastName}`,
+            trip: `${updatedTicket.trip.origin} → ${updatedTicket.trip.destination}`,
+            date: updatedTicket.trip.date,
+            schedule: updatedTicket.trip.schedule,
+            seats: updatedTicket.seats,
+            totalPrice: updatedTicket.totalPrice,
+            paymentId: paymentRecord.id
+          }
+        });
+      }
+    }
+
+    // Pago rechazado o pendiente
+    return res.status(400).json({
+      success: false,
+      error: `Pago ${paymentResult.status}: ${paymentResult.message}`,
+      payment_status: paymentResult.status,
+      details: paymentResult.details
+    });
+
+  } catch (error) {
+    console.error("❌ Error procesando pago:", error);
+    res.status(500).json({
+      success: false,
+      error: "Error interno procesando el pago",
+      details: error.message
+    });
+  }
+});
+
+// 🔍 FUNCIÓN PARA SIMULAR PAGO CON TARJETA
+async function simulateCardPayment(cardData, amount) {
+  // Simular delay de procesamiento
+  await new Promise(resolve => setTimeout(resolve, 2000));
+  
+  // Simular diferentes escenarios
+  const cardNumber = cardData.card_number.replace(/\s/g, '');
+  
+  // Tarjetas de prueba
+  if (cardNumber.startsWith('4111') || cardNumber.startsWith('5555')) {
+    return {
+      success: true,
+      payment_id: 'MP_' + Date.now(),
+      status: 'approved',
+      message: 'Pago aprobado',
+      details: {
+        card_last_digits: cardNumber.slice(-4),
+        cardholder_name: cardData.cardholder_name,
+        payment_method_id: 'visa'
+      }
+    };
+  }
+  
+  // Simular rechazo para otras tarjetas
+  if (cardNumber.startsWith('4000')) {
+    return {
+      success: false,
+      status: 'rejected',
+      error: 'Tarjeta rechazada por el banco emisor',
+      details: { reason: 'insufficient_funds' }
+    };
+  }
+  
+  // Por defecto aprobar
+  return {
+    success: true,
+    payment_id: 'MP_' + Date.now(),
+    status: 'approved',
+    message: 'Pago aprobado',
+    details: {
+      card_last_digits: cardNumber.slice(-4),
+      cardholder_name: cardData.cardholder_name,
+      payment_method_id: 'mastercard'
+    }
+  };
+}
+
+// 🔍 FUNCIÓN PARA SIMULAR PAGO PSE
+async function simulatePSEPayment(pseData, amount) {
+  // Simular delay de procesamiento
+  await new Promise(resolve => setTimeout(resolve, 3000));
+  
+  // Por defecto aprobar PSE
+  return {
+    success: true,
+    payment_id: 'PSE_' + Date.now(),
+    status: 'approved',
+    message: 'Pago PSE aprobado',
+    details: {
+      bank_id: pseData.bank_id,
+      document_number: pseData.document_number,
+      email: pseData.email,
+      payment_method_id: 'pse'
+    }
+  };
+}
+
+// 🔧 FUNCIÓN HELPER PARA ACTUALIZAR ESTADO DE PAGO DEL TICKET
+async function updateTicketPaymentStatus(ticketId, paymentStatus, paymentId) {
+  try {
+    const tickets = await readJSONFile(ticketsFile);
+    const ticketIndex = tickets.findIndex(t => t.id === ticketId);
+    
+    if (ticketIndex !== -1) {
+      tickets[ticketIndex].paymentStatus = paymentStatus;
+      tickets[ticketIndex].status = paymentStatus === 'PAID' ? 'CONFIRMED' : 'PENDING_PAYMENT';
+      tickets[ticketIndex].paymentId = paymentId;
+      tickets[ticketIndex].paidAt = paymentStatus === 'PAID' ? new Date().toISOString() : null;
+      
+      await writeJSONFile(ticketsFile, tickets);
+      console.log(`✅ Ticket ${ticketId} actualizado a: ${paymentStatus}`);
+      return true;
+    }
+    
+    console.error(`❌ Ticket ${ticketId} no encontrado para actualizar pago`);
+    return false;
+  } catch (error) {
+    console.error("Error actualizando estado de pago:", error);
+    return false;
+  }
+}
+
+// 🔧 FUNCIONES HELPER PARA ARCHIVOS JSON
+function readJSONFile(filepath) {
+  return new Promise((resolve, reject) => {
+    fs.readFile(filepath, "utf8", (err, data) => {
+      if (err) {
+        if (err.code === 'ENOENT') {
+          resolve([]); // Archivo no existe, devolver array vacío
+        } else {
+          reject(err);
+        }
+        return;
+      }
+      
+      try {
+        const parsed = data.trim() ? JSON.parse(data) : [];
+        resolve(parsed);
+      } catch (parseErr) {
+        console.error(`Error parsing ${filepath}:`, parseErr);
+        resolve([]); // En caso de error, devolver array vacío
+      }
+    });
+  });
+}
+
+function writeJSONFile(filepath, data) {
+  return new Promise((resolve, reject) => {
+    fs.writeFile(filepath, JSON.stringify(data, null, 2), (err) => {
+      if (err) {
+        reject(err);
+      } else {
+        resolve();
+      }
+    });
+  });
+}
 
 // Endpoint para obtener todos los tickets
 app.get("/tickets", (req, res) => {
@@ -352,6 +619,51 @@ app.get("/tickets/:id", (req, res) => {
   });
 });
 
+// 🔍 NUEVO ENDPOINT PARA CONSULTAR ESTADO DE PAGO
+app.get("/payment-status/:payment_id", async (req, res) => {
+  try {
+    const paymentId = req.params.payment_id;
+    const payments = await readJSONFile(paymentsFile);
+    const payment = payments.find(p => p.id === paymentId);
+    
+    if (!payment) {
+      return res.status(404).json({
+        success: false,
+        error: "Pago no encontrado"
+      });
+    }
+    
+    res.json({
+      success: true,
+      data: payment
+    });
+  } catch (error) {
+    console.error("Error consultando pago:", error);
+    res.status(500).json({
+      success: false,
+      error: "Error interno del servidor"
+    });
+  }
+});
+
+// 📊 ENDPOINT PARA OBTENER TODOS LOS PAGOS
+app.get("/payments", async (req, res) => {
+  try {
+    const payments = await readJSONFile(paymentsFile);
+    res.json({
+      success: true,
+      data: payments,
+      count: payments.length
+    });
+  } catch (error) {
+    console.error("Error obteniendo pagos:", error);
+    res.status(500).json({
+      success: false,
+      error: "Error interno del servidor"
+    });
+  }
+});
+
 // Endpoint de salud del servidor
 app.get("/health", (req, res) => {
   res.json({
@@ -359,7 +671,8 @@ app.get("/health", (req, res) => {
     timestamp: new Date().toISOString(),
     uptime: process.uptime(),
     memory: process.memoryUsage(),
-    environment: process.env.NODE_ENV || 'development'
+    environment: process.env.NODE_ENV || 'development',
+    mercadopago_configured: !!process.env.MP_ACCESS_TOKEN
   });
 });
 
@@ -375,6 +688,9 @@ app.use((req, res) => {
       "POST /tickets",
       "GET /tickets",
       "GET /tickets/:id",
+      "POST /process-payment",
+      "GET /payment-status/:payment_id",
+      "GET /payments",
       "GET /health"
     ]
   });
@@ -396,8 +712,10 @@ app.listen(PORT, "0.0.0.0", () => {
   console.log(`🚀 Servidor corriendo en http://0.0.0.0:${PORT}`);
   console.log(`📁 Archivo de rutas: ${routesFile}`);
   console.log(`🎫 Archivo de tickets: ${ticketsFile}`);
+  console.log(`💳 Archivo de pagos: ${paymentsFile}`);
   console.log(`⏰ Iniciado en: ${new Date().toISOString()}`);
   console.log(`🔧 Entorno: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`💰 MercadoPago: ${process.env.MP_ACCESS_TOKEN ? 'Configurado' : 'Token de prueba'}`);
 });
 
 // Manejo de errores no capturados
