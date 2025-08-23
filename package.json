@@ -37,3 +37,11 @@
     "mercadopago",
     "payment",
     "api"
+  ],
+  "author": "Tu Nombre",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "tu-repositorio-url"
+  }
+}
