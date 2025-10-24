@@ -44,8 +44,12 @@ app.get("/", (req, res) => {
       "GET /routes": "Obtener todas las rutas",
       "POST /tickets": "Crear nuevo ticket",
       "GET /tickets": "Obtener todos los tickets",
+      "GET /tickets/:id": "Obtener un ticket específico",
+      "PATCH /tickets/:id": "Actualizar un ticket",
       "POST /process-payment": "Procesar pago con MercadoPago",
-      "GET /payment-status/:payment_id": "Consultar estado de pago"
+      "GET /payment-status/:payment_id": "Consultar estado de pago",
+      "GET /payments": "Obtener todos los pagos",
+      "GET /health": "Estado del servidor"
     },
     status: "✅ Servidor funcionando correctamente",
     timestamp: new Date().toISOString()
@@ -68,7 +72,7 @@ app.get("/routes", (req, res) => {
       res.json({
         success: true,
         data: routes,
-        count: routes.length
+        count: routes.routes ? routes.routes.length : routes.length
       });
     } catch (parseErr) {
       console.error("Error parsing routes.json:", parseErr);
@@ -80,7 +84,7 @@ app.get("/routes", (req, res) => {
   });
 });
 
-// ⭐ ENDPOINT ORIGINAL PARA CREAR RESERVAS (sin pago)
+// ⭐ ENDPOINT PARA CREAR RESERVAS (sin pago) - CORREGIDO CON PRECIO DINÁMICO
 app.post("/tickets", (req, res) => {
   try {
     console.log("📝 Nueva reserva recibida:", JSON.stringify(req.body, null, 2));
@@ -198,96 +202,139 @@ app.post("/tickets", (req, res) => {
       });
     }
 
-    // ✅ DATOS VALIDADOS - Crear el ticket (ESTADO PENDIENTE DE PAGO)
-    const newTicket = {
-      id: generateTicketId(),
-      status: "PENDING_PAYMENT", // Cambio: ahora está pendiente de pago
-      createdAt: new Date().toISOString(),
-      passengers: passengers.map((passenger, index) => ({
-        name: passenger.name.trim(),
-        lastName: passenger.lastName.trim(),
-        documentType: passenger.documentType,
-        documentNumber: passenger.documentNumber.trim(),
-        birthDate: passenger.birthDate,
-        hasMinors: passenger.hasMinors,
-        hasPets: passenger.hasPets,
-        hasInsurance: passenger.hasInsurance || false,
-        seat: passenger.seat || seats[index]
-      })),
-      trip: {
-        origin: trip.origin,
-        destination: trip.destination,
-        date: trip.date,
-        schedule: trip.schedule
-      },
-      seats: seats,
-      billing: {
-        documentType: billing.documentType,
-        documentNumber: billing.documentNumber.trim(),
-        name: billing.name.trim(),
-        phone: billing.phone.trim(),
-        countryCode: billing.countryCode || '+57',
-        email: billing.email.trim().toLowerCase(),
-        fullPhone: `${billing.countryCode || '+57'}${billing.phone.trim()}`
-      },
-      acceptedTerms: acceptedTerms,
-      paymentStatus: "PENDING",
-      totalPassengers: passengers.length,
-      totalPrice: passengers.reduce((total, p) => {
-        const basePrice = 45000; // Precio base por pasajero
-        const insurancePrice = p.hasInsurance ? 2000 : 0;
-        return total + basePrice + insurancePrice;
-      }, 0)
-    };
-
-    // Leer tickets existentes
-    fs.readFile(ticketsFile, "utf8", (err, data) => {
-      let tickets = [];
-      
-      if (!err && data.trim()) {
-        try {
-          tickets = JSON.parse(data);
-        } catch (parseErr) {
-          console.error("Error parsing tickets.json:", parseErr);
-          tickets = [];
-        }
+    // ✅ BUSCAR EL PRECIO DE LA RUTA EN routes.json
+    fs.readFile(routesFile, "utf8", (err, routesData) => {
+      if (err) {
+        console.error("❌ Error leyendo routes.json:", err);
+        return res.status(500).json({
+          success: false,
+          error: "No se pudo obtener información de rutas"
+        });
       }
 
-      // Agregar nuevo ticket
-      tickets.push(newTicket);
+      let routePrice = 45000; // Precio por defecto si no se encuentra la ruta
+      
+      try {
+        const routesJson = JSON.parse(routesData);
+        const routes = routesJson.routes || routesJson;
+        
+        // Buscar la ruta específica
+        const selectedRoute = routes.find(r => 
+          r.origin === trip.origin && r.destination === trip.destination
+        );
+        
+        if (selectedRoute && selectedRoute.price) {
+          routePrice = selectedRoute.price;
+          console.log(`✅ Precio encontrado para ${trip.origin} → ${trip.destination}: $${routePrice}`);
+        } else {
+          console.warn(`⚠️ Ruta no encontrada: ${trip.origin} → ${trip.destination}. Usando precio por defecto: $${routePrice}`);
+        }
+      } catch (parseErr) {
+        console.error("❌ Error parseando routes.json:", parseErr);
+      }
 
-      // Guardar en archivo
-      fs.writeFile(ticketsFile, JSON.stringify(tickets, null, 2), (writeErr) => {
-        if (writeErr) {
-          console.error("❌ Error guardando ticket:", writeErr);
-          return res.status(500).json({
-            success: false,
-            error: "No se pudo guardar la reserva",
-            details: writeErr.message
-          });
+      // ✅ CALCULAR PRECIO TOTAL DINÁMICAMENTE
+      const totalPrice = passengers.reduce((total, p) => {
+        const basePrice = routePrice; // ✅ Ahora usa el precio real de la ruta
+        const insurancePrice = p.hasInsurance ? 2000 : 0;
+        return total + basePrice + insurancePrice;
+      }, 0);
+
+      console.log(`💰 Cálculo de precio:`);
+      console.log(`   - Precio base por pasajero: $${routePrice}`);
+      console.log(`   - Número de pasajeros: ${passengers.length}`);
+      console.log(`   - Pasajeros con seguro: ${passengers.filter(p => p.hasInsurance).length}`);
+      console.log(`   - TOTAL: $${totalPrice} COP`);
+
+      // ✅ DATOS VALIDADOS - Crear el ticket (ESTADO PENDIENTE DE PAGO)
+      const newTicket = {
+        id: generateTicketId(),
+        status: "PENDING_PAYMENT",
+        createdAt: new Date().toISOString(),
+        passengers: passengers.map((passenger, index) => ({
+          name: passenger.name.trim(),
+          lastName: passenger.lastName.trim(),
+          documentType: passenger.documentType,
+          documentNumber: passenger.documentNumber.trim(),
+          birthDate: passenger.birthDate,
+          hasMinors: passenger.hasMinors,
+          hasPets: passenger.hasPets,
+          hasInsurance: passenger.hasInsurance || false,
+          seat: passenger.seat || seats[index]
+        })),
+        trip: {
+          origin: trip.origin,
+          destination: trip.destination,
+          date: trip.date,
+          schedule: trip.schedule
+        },
+        seats: seats,
+        billing: {
+          documentType: billing.documentType,
+          documentNumber: billing.documentNumber.trim(),
+          name: billing.name.trim(),
+          phone: billing.phone.trim(),
+          countryCode: billing.countryCode || '+57',
+          email: billing.email.trim().toLowerCase(),
+          fullPhone: `${billing.countryCode || '+57'}${billing.phone.trim()}`
+        },
+        acceptedTerms: acceptedTerms,
+        paymentStatus: "PENDING",
+        totalPassengers: passengers.length,
+        totalPrice: totalPrice, // ✅ Ahora es dinámico
+        routePrice: routePrice  // ✅ Guardamos el precio base de la ruta
+      };
+
+      // Leer tickets existentes
+      fs.readFile(ticketsFile, "utf8", (err, data) => {
+        let tickets = [];
+        
+        if (!err && data.trim()) {
+          try {
+            tickets = JSON.parse(data);
+          } catch (parseErr) {
+            console.error("Error parsing tickets.json:", parseErr);
+            tickets = [];
+          }
         }
 
-        console.log("✅ Reserva creada (pendiente de pago):", newTicket.id);
-        console.log(`👥 Pasajeros: ${newTicket.totalPassengers}`);
-        console.log(`💺 Asientos: ${newTicket.seats.join(', ')}`);
-        console.log(`💰 Precio total: $${newTicket.totalPrice} COP`);
-        
-        // ✅ RESPUESTA EXITOSA (formato que espera Flutter)
-        res.status(200).json({
-          success: true,
-          message: "Reserva creada exitosamente - Pendiente de pago",
-          ticket: {
-            id: newTicket.id,
-            status: newTicket.status,
-            passengers: newTicket.totalPassengers,
-            mainPassenger: `${newTicket.passengers[0].name} ${newTicket.passengers[0].lastName}`,
-            trip: `${newTicket.trip.origin} → ${newTicket.trip.destination}`,
-            date: newTicket.trip.date,
-            schedule: newTicket.trip.schedule,
-            seats: newTicket.seats,
-            totalPrice: newTicket.totalPrice,
-            createdAt: newTicket.createdAt
+        // Agregar nuevo ticket
+        tickets.push(newTicket);
+
+        // Guardar en archivo
+        fs.writeFile(ticketsFile, JSON.stringify(tickets, null, 2), (writeErr) => {
+          if (writeErr) {
+            console.error("❌ Error guardando ticket:", writeErr);
+            return res.status(500).json({
+              success: false,
+              error: "No se pudo guardar la reserva",
+              details: writeErr.message
+            });
           }
+
+          console.log("✅ Reserva creada (pendiente de pago):", newTicket.id);
+          console.log(`👥 Pasajeros: ${newTicket.totalPassengers}`);
+          console.log(`💺 Asientos: ${newTicket.seats.join(', ')}`);
+          console.log(`💰 Precio total: $${newTicket.totalPrice} COP`);
+          
+          // ✅ RESPUESTA EXITOSA (formato que espera Flutter)
+          res.status(200).json({
+            success: true,
+            message: "Reserva creada exitosamente - Pendiente de pago",
+            ticket: {
+              id: newTicket.id,
+              status: newTicket.status,
+              passengers: newTicket.totalPassengers,
+              mainPassenger: `${newTicket.passengers[0].name} ${newTicket.passengers[0].lastName}`,
+              trip: `${newTicket.trip.origin} → ${newTicket.trip.destination}`,
+              date: newTicket.trip.date,
+              schedule: newTicket.trip.schedule,
+              seats: newTicket.seats,
+              totalPrice: newTicket.totalPrice,
+              routePrice: newTicket.routePrice,
+              createdAt: newTicket.createdAt
+            }
+          });
         });
       });
     });
@@ -619,6 +666,47 @@ app.get("/tickets/:id", (req, res) => {
   });
 });
 
+// Endpoint para actualizar un ticket (PATCH)
+app.patch("/tickets/:id", async (req, res) => {
+  try {
+    const ticketId = req.params.id;
+    const updates = req.body;
+    
+    const tickets = await readJSONFile(ticketsFile);
+    const ticketIndex = tickets.findIndex(t => t.id === ticketId);
+    
+    if (ticketIndex === -1) {
+      return res.status(404).json({
+        success: false,
+        error: "Ticket no encontrado"
+      });
+    }
+    
+    // Actualizar el ticket con los nuevos datos
+    tickets[ticketIndex] = {
+      ...tickets[ticketIndex],
+      ...updates,
+      updatedAt: new Date().toISOString()
+    };
+    
+    await writeJSONFile(ticketsFile, tickets);
+    
+    console.log(`✅ Ticket ${ticketId} actualizado`);
+    
+    res.json({
+      success: true,
+      message: "Ticket actualizado exitosamente",
+      data: tickets[ticketIndex]
+    });
+  } catch (error) {
+    console.error("Error actualizando ticket:", error);
+    res.status(500).json({
+      success: false,
+      error: "Error interno del servidor"
+    });
+  }
+});
+
 // 🔍 NUEVO ENDPOINT PARA CONSULTAR ESTADO DE PAGO
 app.get("/payment-status/:payment_id", async (req, res) => {
   try {
@@ -688,6 +776,7 @@ app.use((req, res) => {
       "POST /tickets",
       "GET /tickets",
       "GET /tickets/:id",
+      "PATCH /tickets/:id",
       "POST /process-payment",
       "GET /payment-status/:payment_id",
       "GET /payments",
@@ -721,6 +810,11 @@ app.listen(PORT, "0.0.0.0", () => {
 // Manejo de errores no capturados
 process.on('uncaughtException', (err) => {
   console.error('❌ Error no capturado:', err);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('❌ Promesa rechazada:', reason);
   process.exit(1);
 });
 
