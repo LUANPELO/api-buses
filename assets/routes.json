@@ -23,58 +23,142 @@
     {
       "origin": "Barranquilla",
       "destination": "Medellín",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Medellín",
       "destination": "Barranquilla",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Santa Marta",
       "destination": "Barranquilla",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Santa Marta",
       "destination": "Medellín",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Barranquilla",
       "destination": "Santa Marta",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Medellín",
       "destination": "Maicao",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Medellín",
       "destination": "Planeta Rica",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Medellín",
       "destination": "Sincelejo",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Medellín",
       "destination": "Riohacha",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Medellín",
       "destination": "Quibdó",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Cartagena",
       "destination": "Sincelejo",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Medellín",
       "destination": "Montería",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Bogotá",
       "destination": "Montería",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Bogotá",
       "destination": "Montería",
+      "price": 60000,
+      "currency": "COP",
+      "duration_hours": 6,
+      "schedules": ["06:00 am", "12:30 pm"],
+      "totalSeats": 42,
+      "availableSeats": 38
     },
     {
       "origin": "Bogotá",
