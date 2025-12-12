@@ -21,6 +21,62 @@
       "availableSeats": 38
     },
     {
+      "origin": "Barranquilla",
+      "destination": "Medellín",
+    },
+    {
+      "origin": "Medellín",
+      "destination": "Barranquilla",
+    },
+    {
+      "origin": "Santa Marta",
+      "destination": "Barranquilla",
+    },
+    {
+      "origin": "Santa Marta",
+      "destination": "Medellín",
+    },
+    {
+      "origin": "Barranquilla",
+      "destination": "Santa Marta",
+    },
+    {
+      "origin": "Medellín",
+      "destination": "Maicao",
+    },
+    {
+      "origin": "Medellín",
+      "destination": "Planeta Rica",
+    },
+    {
+      "origin": "Medellín",
+      "destination": "Sincelejo",
+    },
+    {
+      "origin": "Medellín",
+      "destination": "Riohacha",
+    },
+    {
+      "origin": "Medellín",
+      "destination": "Quibdó",
+    },
+    {
+      "origin": "Cartagena",
+      "destination": "Sincelejo",
+    },
+    {
+      "origin": "Medellín",
+      "destination": "Montería",
+    },
+    {
+      "origin": "Bogotá",
+      "destination": "Montería",
+    },
+    {
+      "origin": "Bogotá",
+      "destination": "Montería",
+    },
+    {
       "origin": "Bogotá",
       "destination": "Cali",
       "price": 210000,
